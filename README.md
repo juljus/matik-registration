@@ -8,22 +8,26 @@ A system for managing the rental and return of a single physical key using RFID 
 - **Backend:** Nuxt server routes handle API and database logic
 - **Database:** Local database on developer machine (for development)
 - **Hardware:** ESP microcontroller with RFID reader at the key table
+- **Authentication:** Google authentication for secure login and role assignment
 
 ## Key Features
-- Register new RFID chips via web interface
+- Register new RFID chips via web interface (admin only)
 - View current key holder and key status
 - ESP device for reading RFID chips when key is taken/returned
-- Google authentication with roles (student, admin)
-- Each student/admin has their own RFID card
+- Google authentication with roles (admin determined by email in admins table)
+- Each user has their own RFID card and email
 
 ## Tech Stack
 - Nuxt (Vue 3, TypeScript)
 - Nuxt server routes for backend logic
 - Local database (development)
 - ESP microcontroller (e.g., ESP8266/ESP32) with RFID reader
+- Google authentication (OAuth)
 
 ## Data Model
-- Each key event stores: Timestamp, RFID
+- **User:** rfid, name, phone, email, createdAt
+- **Admin:** email
+- **KeyEvent:** Timestamp, RFID, eventType (take/return)
 
 ## Communication
 - ESP communicates with backend via HTTP API
@@ -33,6 +37,7 @@ A system for managing the rental and return of a single physical key using RFID 
 - Backend: Handled via Nuxt server routes
 - Database: Local, setup instructions to be added
 - Hardware: ESP code and wiring instructions to be added
+- Google Auth: Setup instructions to be added
 
 ## Future Improvements
 - Notifications (sms, etc.) when key is taken/submitted or overdue
