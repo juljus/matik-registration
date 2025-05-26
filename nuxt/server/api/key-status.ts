@@ -11,31 +11,60 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  // For now, we'll accept any bearer token since we're using Google auth on frontend
-  // In production, you'd validate the JWT token here
-  const token = authHeader.replace('Bearer ', '');
-  
-  if (!token) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: 'Invalid authentication token'
-    });
-  }
-
   try {
+    // Decode the base64 encoded user data
+    const token = authHeader.substring(7);
+    const userData = JSON.parse(atob(token));
+    
+    if (!userData.email) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Invalid token - no email found'
+      });
+    }
+
     const db = await getDb();
+    
+    // Check if user is admin first
+    const admins = db.collection('admins');
+    const isAdmin = await admins.findOne({ email: userData.email });
+    
+    // Check if user is registered in the users collection
+    const users = db.collection('users');
+    const user = await users.findOne({ email: userData.email });
+    
+    // Allow access if user is either registered OR an admin
+    if (!user && !isAdmin) {
+      throw createError({
+        statusCode: 403,
+        statusMessage: 'User not registered or approved'
+      });
+    }
+    // Get the most recent key event to determine current status
     const keyEvents = db.collection('keyEvents');
-    // Find the latest key event
     const latestEvent = await keyEvents.find().sort({ timestamp: -1 }).limit(1).toArray();
     if (!latestEvent.length) {
-      return { status: 'available', holder: null };
+      return { 
+        status: 'available', 
+        holder: null,
+        timestamp: new Date().toISOString()
+      };
     }
     const latestEventData = latestEvent[0];
-    // Optionally, fetch user info
+    // Fetch user info if key is taken
     let holder = null;
     if (latestEventData.rfid && latestEventData.eventType === 'take') {
-      const user = await db.collection('users').findOne({ rfid: latestEventData.rfid });
-      holder = user ? { name: user.name, phone: user.phone, role: user.role } : null;
+      const holderUser = await users.findOne({ rfid: latestEventData.rfid });
+      if (holderUser) {
+        // Check if holder is admin
+        const admins = db.collection('admins');
+        const isAdmin = await admins.findOne({ email: holderUser.email });
+        holder = { 
+          name: holderUser.name, 
+          phone: holderUser.phone, 
+          role: isAdmin ? 'Admin' : 'Student'
+        };
+      }
     }
     return {
       status: latestEventData.eventType === 'take' ? 'taken' : 'available',

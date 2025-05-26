@@ -4,9 +4,15 @@
       <h1>Matik Key Registration</h1>
       <div class="auth-bar">
         <GoogleSignInButton v-if="!isSignedIn" @success="handleSignInSuccess" @error="handleSignInError" />
-        <div v-else>
-          <span>Signed in as {{ user?.email || 'User' }}</span>
-          <button @click="signOut">Sign out</button>
+        <div v-else class="user-section">
+          <div class="nav-links">
+            <NuxtLink to="/" class="nav-link">Status</NuxtLink>
+            <NuxtLink v-if="userStatus?.isAdmin" to="/admin" class="nav-link">Admin</NuxtLink>
+          </div>
+          <div class="user-info">
+            <span>Signed in as {{ user?.email || 'User' }}</span>
+            <button @click="signOut" class="sign-out-btn">Sign out</button>
+          </div>
         </div>
       </div>
     </header>
@@ -19,7 +25,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 
-const { isSignedIn, user, initializeAuth, setAuth, clearAuth } = useAuth()
+const { isSignedIn, user, userStatus, initializeAuth, setAuth, clearAuth } = useAuth()
 
 // Initialize auth state on app load
 onMounted(() => {
@@ -92,7 +98,47 @@ function signOut() {
   align-items: center;
   gap: 1rem;
 }
-.auth-bar button {
+
+.user-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.nav-links {
+  display: flex;
+  gap: 1rem;
+}
+
+.nav-link {
+  color: #f1f1f1;
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  transition: background 0.2s, color 0.2s;
+  border: 1px solid transparent;
+}
+
+.nav-link:hover {
+  background: #35384a;
+  color: #6bffb1;
+  border-color: #444;
+}
+
+.nav-link.router-link-active {
+  background: #35384a;
+  color: #6bffb1;
+  border-color: #6bffb1;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.auth-bar button, .sign-out-btn {
   background: #23262f;
   color: #f1f1f1;
   border: 1px solid #444;
@@ -102,7 +148,7 @@ function signOut() {
   cursor: pointer;
   transition: background 0.2s, color 0.2s;
 }
-.auth-bar button:hover {
+.auth-bar button:hover, .sign-out-btn:hover {
   background: #35384a;
   color: #6bffb1;
 }
