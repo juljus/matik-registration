@@ -6,7 +6,7 @@
         <GoogleSignInButton v-if="!isSignedIn" @success="handleSignInSuccess" @error="handleSignInError" />
         <div v-else class="user-section">
           <div class="nav-links">
-            <NuxtLink to="/" class="nav-link">Status</NuxtLink>
+            <NuxtLink to="/" class="nav-link">Home</NuxtLink>
             <NuxtLink v-if="userStatus?.isAdmin" to="/admin" class="nav-link">Admin</NuxtLink>
           </div>
           <div class="user-info">
