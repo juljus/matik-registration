@@ -1,7 +1,11 @@
-<template>
+  <template>
   <div class="status-box">
     <h2>Key Status</h2>
-    <div v-if="pending" class="status-loading">Loading...</div>
+    <div v-if="!isSignedIn" class="auth-required">
+      <p>🔒 Please sign in to view the key status</p>
+      <p class="auth-hint">You need to be logged in to access this information.</p>
+    </div>
+    <div v-else-if="pending" class="status-loading">Loading...</div>
     <div v-else-if="error" class="status-error">{{ error }}</div>
     <div v-else>
       <div class="status-indicator" :class="statusClass">
@@ -24,13 +28,39 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 
 const status = ref<'taken' | 'available'>('available');
 const holder = ref<{ name: string; phone: string; role: string } | null>(null);
 const timestamp = ref<string | null>(null);
 const pending = ref(true);
 const error = ref<string | null>(null);
+
+// Use the shared auth composable
+const { isSignedIn, initializeAuth } = useAuth();
+
+// Check if user is authenticated on page load
+onMounted(() => {
+  initializeAuth();
+  if (isSignedIn.value) {
+    fetchStatus();
+  } else {
+    pending.value = false;
+  }
+});
+
+// Watch for authentication changes and fetch status when user logs in
+watch(isSignedIn, (newValue) => {
+  if (newValue) {
+    fetchStatus();
+  } else {
+    // Clear data when user logs out
+    status.value = 'available';
+    holder.value = null;
+    timestamp.value = null;
+    pending.value = false;
+  }
+});
 
 const statusClass = computed(() =>
   status.value === 'taken' ? 'taken' : 'available'
@@ -45,19 +75,33 @@ async function fetchStatus() {
   pending.value = true;
   error.value = null;
   try {
-    const res = await fetch('/api/key-status');
+    // Get user data from localStorage to include as token
+    const savedUser = localStorage.getItem('matik-user');
+    if (!savedUser) {
+      throw new Error('No authentication token available');
+    }
+    
+    const res = await fetch('/api/key-status', {
+      headers: {
+        'Authorization': `Bearer ${btoa(savedUser)}` // Use base64 encoded user data as simple token
+      }
+    });
+    
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    }
+    
     const data = await res.json();
     status.value = data.status;
     holder.value = data.holder;
     timestamp.value = data.timestamp;
   } catch (e) {
     error.value = 'Failed to load key status.';
+    console.error('Fetch error:', e);
   } finally {
     pending.value = false;
   }
 }
-
-onMounted(fetchStatus);
 </script>
 
 <style scoped>
@@ -98,5 +142,14 @@ onMounted(fetchStatus);
 .status-timestamp {
   margin-top: 0.5rem;
   color: #888;
+}
+.auth-required {
+  text-align: center;
+  color: #aaa;
+}
+.auth-hint {
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: 0.5rem;
 }
 </style>

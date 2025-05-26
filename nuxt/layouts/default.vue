@@ -3,9 +3,9 @@
     <header class="layout-header">
       <h1>Matik Key Registration</h1>
       <div class="auth-bar">
-        <button v-if="!isSignedIn" @click="signIn">Sign in with Google</button>
+        <GoogleSignInButton v-if="!isSignedIn" @success="handleSignInSuccess" @error="handleSignInError" />
         <div v-else>
-          <span>Signed in as {{ googleUser?.email }}</span>
+          <span>Signed in as {{ user?.email || 'User' }}</span>
           <button @click="signOut">Sign out</button>
         </div>
       </div>
@@ -17,17 +17,48 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useGoogleSignin } from 'vue3-google-signin'
+import { onMounted } from 'vue'
 
-const user = ref(null)
-const { isReady, isSignedIn, googleUser, signIn, signOut } = useGoogleSignin()
+const { isSignedIn, user, initializeAuth, setAuth, clearAuth } = useAuth()
 
-function onSignInSuccess(userInfo) {
-  user.value = userInfo
+// Initialize auth state on app load
+onMounted(() => {
+  initializeAuth()
+})
+
+function handleSignInSuccess(response: any) {
+  console.log('Login success:', response)
+  
+  let userData = null
+  
+  // The response contains credential with user info
+  if (response.credential) {
+    // Decode the JWT credential to get user info
+    const payload = JSON.parse(atob(response.credential.split('.')[1]))
+    userData = {
+      email: payload.email,
+      name: payload.name,
+      picture: payload.picture
+    }
+  } else {
+    // Fallback if credential structure is different
+    userData = {
+      email: response.email || response.user?.email || 'Unknown',
+      name: response.name || response.user?.name,
+      picture: response.picture || response.user?.picture
+    }
+  }
+  
+  setAuth(userData)
 }
-function onSignInError(error) {
-  user.value = null
+
+function handleSignInError(error: any) {
+  console.error('Login error:', error)
+  clearAuth()
+}
+
+function signOut() {
+  clearAuth()
 }
 </script>
 
