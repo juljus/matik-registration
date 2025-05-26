@@ -40,7 +40,44 @@ export default defineEventHandler(async (event) => {
       const signupRequests = db.collection('signupRequests');
       const pendingRequests = await signupRequests.find({ status: 'pending' }).toArray();
       
-      return { requests: pendingRequests };
+      // Get all approved users
+      const users = db.collection('users');
+      const allUsers = await users.find({}).toArray();
+      
+      // Get all admins
+      const adminsList = await admins.find({}).toArray();
+      const adminEmails = adminsList.map(admin => admin.email);
+      
+      // Create a map of existing users by email for quick lookup
+      const userMap = new Map(allUsers.map(user => [user.email, user]));
+      
+      // Combine users and admin-only users
+      const combinedUsers: any[] = [];
+      
+      // Add all existing users with admin flag
+      allUsers.forEach(user => {
+        combinedUsers.push({
+          ...user,
+          isAdmin: adminEmails.includes(user.email)
+        });
+      });
+      
+      // Add admin-only users (admins who aren't in the users collection)
+      adminsList.forEach(admin => {
+        if (!userMap.has(admin.email)) {
+          combinedUsers.push({
+            email: admin.email,
+            name: admin.email.split('@')[0], // Use email prefix as name if not available
+            createdAt: admin.createdAt || new Date(),
+            isAdmin: true
+          });
+        }
+      });
+      
+      return { 
+        requests: pendingRequests,
+        users: combinedUsers
+      };
     }
 
     if (event.method === 'POST') {
@@ -52,6 +89,30 @@ export default defineEventHandler(async (event) => {
           statusCode: 400,
           statusMessage: 'Missing action or email'
         });
+      }
+
+      if (action === 'remove') {
+        // Check if user trying to remove is an admin (admins cannot be removed)
+        const adminCheck = await admins.findOne({ email });
+        if (adminCheck) {
+          throw createError({
+            statusCode: 403,
+            statusMessage: 'Cannot remove admin users'
+          });
+        }
+
+        // Remove user from users collection
+        const users = db.collection('users');
+        const deleteResult = await users.deleteOne({ email });
+        
+        if (deleteResult.deletedCount === 0) {
+          throw createError({
+            statusCode: 404,
+            statusMessage: 'User not found'
+          });
+        }
+        
+        return { message: 'User removed successfully' };
       }
 
       const signupRequests = db.collection('signupRequests');
