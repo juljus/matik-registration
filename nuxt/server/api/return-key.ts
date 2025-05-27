@@ -48,6 +48,14 @@ export default defineEventHandler(async (event) => {
       });
     }
 
+    // Check if user has RFID assigned - required for ALL users (including admins)
+    if (!user?.rfid) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'No RFID tag assigned to your account. Please contact an admin to assign an RFID tag.'
+      });
+    }
+
     // Check current key status
     const keyEvents = db.collection('keyEvents');
     const latestEvent = await keyEvents.find().sort({ timestamp: -1 }).limit(1).toArray();
@@ -61,7 +69,7 @@ export default defineEventHandler(async (event) => {
 
     // Check if the current user is the one who took the key (or if user is admin)
     const currentEvent = latestEvent[0];
-    const userRfid = user?.rfid || `admin-${userData.email}`;
+    const userRfid = user.rfid;
     
     if (currentEvent.rfid !== userRfid && !isAdmin) {
       // Find who currently has the key

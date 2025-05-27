@@ -48,16 +48,16 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    // Check if user has RFID assigned
-    if (!user?.rfid && !isAdmin) {
+    // Check if user has RFID assigned - required for ALL users (including admins)
+    if (!user?.rfid) {
       throw createError({
         statusCode: 400,
-        statusMessage: 'No RFID tag assigned to your account. Please contact an admin.'
+        statusMessage: 'No RFID tag assigned to your account. Please contact an admin to assign an RFID tag.'
       });
     }
 
-    // For admins without RFID, we need to assign a temporary one or handle differently
-    const rfidToUse = user?.rfid || `admin-${userData.email}`;
+    // Validate that the RFID exists in the database
+    const rfidToUse = user.rfid;
 
     // Check current key status
     const keyEvents = db.collection('keyEvents');

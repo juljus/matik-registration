@@ -47,16 +47,26 @@
           </div>
           <div class="status-text">
             <h3>{{ status === 'taken' ? 'Key Taken' : 'Key Available' }}</h3>
-            <p>{{ status === 'taken' ? 'The key is currently in use' : 'The key is available for use' }}</p>
+            <p v-if="!keyData?.isOrphaned">{{ status === 'taken' ? 'The key is currently in use' : 'The key is available for use' }}</p>
+            <p v-else class="orphaned-warning">⚠️ Key is stuck - taken by removed RFID ({{ holder?.orphanedRfid }})</p>
           </div>
         </div>
         
         <div v-if="holder" class="holder-info">
-          <h4>Current Holder</h4>
+          <h4>{{ keyData?.isOrphaned ? 'Orphaned Key Holder' : 'Current Holder' }}</h4>
           <div class="holder-details">
             <p><strong>Name:</strong> {{ holder.name }}</p>
-            <p><strong>Phone:</strong> {{ holder.phone }}</p>
+            <p v-if="!keyData?.isOrphaned && holder.phone"><strong>Phone:</strong> {{ holder.phone }}</p>
+            <p v-if="holder.role"><strong>Role:</strong> {{ holder.role }}</p>
             <p><strong>Since:</strong> {{ timestamp ? formatDate(timestamp) : 'Unknown' }}</p>
+            <div v-if="keyData?.isOrphaned && userStatus?.isAdmin" class="admin-warning">
+              <p class="warning-text">🚨 This key is orphaned (holder's RFID was removed from the system). Only admins can reset it.</p>
+              <button @click="resetOrphanedKey" :disabled="actionPending" class="reset-btn">
+                <span v-if="actionPending">⏳</span>
+                <span v-else>🔧</span>
+                Reset Key Status
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -134,7 +144,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 
 // State management
 const status = ref<'taken' | 'available'>('available');
-const holder = ref<{ name: string; phone: string; role: string } | null>(null);
+const holder = ref<{ name: string; phone: string; role: string; orphanedRfid?: string } | null>(null);
 const timestamp = ref<string | null>(null);
 const pending = ref(true);
 const error = ref<string | null>(null);
@@ -143,6 +153,7 @@ const signupMessage = ref<string | null>(null);
 const phoneNumber = ref('');
 const actionPending = ref(false);
 const actionMessage = ref<string | null>(null);
+const keyData = ref<any>(null); // Full key status response
 
 // Use the shared auth composable
 const { isSignedIn, user, userStatus, initializeAuth } = useAuth();
@@ -299,6 +310,50 @@ async function returnKey() {
   }
 }
 
+// Admin function to reset orphaned keys
+async function resetOrphanedKey() {
+  if (!userStatus.value?.isAdmin) {
+    actionMessage.value = 'Only admins can reset orphaned keys';
+    return;
+  }
+  
+  actionPending.value = true;
+  actionMessage.value = null;
+  
+  try {
+    const savedUser = localStorage.getItem('matik-user');
+    if (!savedUser) {
+      throw new Error('No authentication token available');
+    }
+    
+    const response = await fetch('/api/admin/reset-key', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${btoa(savedUser)}`
+      },
+      body: JSON.stringify({
+        forceReturn: true,
+        reason: 'Orphaned key reset by admin'
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok) {
+      actionMessage.value = 'Key status successfully reset!';
+      await fetchStatus(); // Refresh status
+    } else {
+      actionMessage.value = result.error || 'Failed to reset key status';
+    }
+  } catch (error) {
+    console.error('Reset key error:', error);
+    actionMessage.value = 'Failed to reset key status. Please try again.';
+  } finally {
+    actionPending.value = false;
+  }
+}
+
 // Status fetching
 async function fetchStatus() {
   pending.value = true;
@@ -321,6 +376,7 @@ async function fetchStatus() {
     }
     
     const data = await res.json();
+    keyData.value = data; // Store the full key data
     status.value = data.status;
     holder.value = data.holder;
     timestamp.value = data.timestamp;
@@ -457,6 +513,50 @@ async function fetchStatus() {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+.orphaned-warning {
+  color: #ff6b6b;
+  font-weight: 500;
+}
+
+.admin-warning {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #3a1a1a;
+  border-radius: 0.5rem;
+  border: 1px solid #4a2a2a;
+}
+
+.warning-text {
+  color: #ff6b6b;
+  margin-bottom: 1rem;
+}
+
+.reset-btn {
+  background: #ff6b6b;
+  color: #181a20;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 auto;
+}
+
+.reset-btn:hover:not(:disabled) {
+  background: #ff4b4b;
+  transform: translateY(-1px);
+}
+
+.reset-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .status-indicator {

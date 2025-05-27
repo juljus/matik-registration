@@ -53,6 +53,7 @@ export default defineEventHandler(async (event) => {
     const latestEventData = latestEvent[0];
     // Fetch user info if key is taken
     let holder = null;
+    let isOrphaned = false;
     if (latestEventData.rfid && latestEventData.eventType === 'take') {
       const holderUser = await users.findOne({ rfid: latestEventData.rfid });
       if (holderUser) {
@@ -64,12 +65,22 @@ export default defineEventHandler(async (event) => {
           phone: holderUser.phone, 
           role: isAdmin ? 'Admin' : 'Student'
         };
+      } else {
+        // Orphaned key - RFID exists in events but not in users
+        isOrphaned = true;
+        holder = {
+          name: 'Unknown User (Orphaned)',
+          phone: 'N/A',
+          role: 'Unknown',
+          orphanedRfid: latestEventData.rfid
+        };
       }
     }
     return {
       status: latestEventData.eventType === 'take' ? 'taken' : 'available',
       holder,
       timestamp: latestEventData.timestamp,
+      isOrphaned: isOrphaned
     };
   } catch (error) {
     throw createError({
