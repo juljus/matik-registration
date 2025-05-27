@@ -338,10 +338,10 @@ async function fetchStatus() {
 .page-container {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  padding: 1.5rem;
+  gap: 1rem;
+  padding: 0;
   min-height: 100vh;
-  background: #0f1114;
+  background: transparent;
 }
 
 /* Module Base Styles */

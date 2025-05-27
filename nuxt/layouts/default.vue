@@ -80,6 +80,27 @@ function signOut() {
 </script>
 
 <style scoped>
+/* Global CSS Reset */
+:global(*) {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:global(html, body) {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #0f1114;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+:global(#__nuxt) {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 /* Remove all white borders and create modular design */
 .layout-container {
   min-height: 100vh;
@@ -88,8 +109,8 @@ function signOut() {
   display: flex;
   flex-direction: column;
   font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
-  padding: 1rem;
-  gap: 1rem;
+  padding: 0.75rem;
+  gap: 0.75rem;
   margin: 0;
   box-sizing: border-box;
 }
@@ -229,7 +250,7 @@ function signOut() {
 /* Responsive Design */
 @media (max-width: 768px) {
   .layout-container {
-    padding: 0.5rem;
+    padding: 0.25rem;
   }
   
   .navbar-content {
