@@ -61,19 +61,26 @@ export const useAuth = () => {
     }
   }
 
-  const requestSignup = async () => {
+  const requestSignup = async (phoneNumber?: string) => {
+    console.log('requestSignup called with phone:', phoneNumber);
     try {
       const savedUser = localStorage.getItem('matik-user')
+      console.log('savedUser:', savedUser);
       if (!savedUser) throw new Error('No user data available')
 
+      console.log('Making fetch request to /api/auth/signup');
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${btoa(savedUser)}`
-        }
+        },
+        body: JSON.stringify({ phoneNumber })
       })
 
+      console.log('Response status:', res.status);
       const result = await res.json()
+      console.log('Response result:', result);
       return result
     } catch (error) {
       console.error('Error requesting signup:', error)

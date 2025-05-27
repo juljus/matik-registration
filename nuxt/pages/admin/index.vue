@@ -20,6 +20,7 @@
             <div class="request-info">
               <h4>{{ request.name || 'Unknown Name' }}</h4>
               <p><strong>Email:</strong> {{ request.email }}</p>
+              <p><strong>Phone:</strong> {{ request.phoneNumber || 'Not provided' }}</p>
               <p><strong>Requested:</strong> {{ formatDate(request.requestedAt) }}</p>
             </div>
             <div class="request-actions">
@@ -82,6 +83,7 @@ interface SignupRequest {
   email: string;
   name: string;
   picture: string;
+  phoneNumber: string;
   requestedAt: string;
   status: string;
 }

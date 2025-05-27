@@ -36,8 +36,10 @@ A comprehensive system for managing the rental and return of a single physical k
 1. User signs in with Google → Gets JWT with email/name
 2. System checks if user is approved or admin
 3. If not approved → Shows "Request Access" button
-4. Admin sees pending requests in admin panel
-5. Admin approves → User gains access to key system
+4. User clicks "Request Access" → Phone number form appears
+5. User enters phone number and submits request
+6. Admin sees pending requests with phone numbers in admin panel
+7. Admin approves → User gains access to key system
 
 ## 🛠️ Tech Stack
 - **Frontend:** Nuxt 3, Vue 3, TypeScript, CSS3
@@ -55,7 +57,7 @@ A comprehensive system for managing the rental and return of a single physical k
 {
   email: string,
   name: string,
-  phone?: string,
+  phone: string,
   rfid?: string,
   createdAt: Date
 }
@@ -71,6 +73,7 @@ A comprehensive system for managing the rental and return of a single physical k
   email: string,
   name: string,
   picture: string,
+  phoneNumber: string,
   requestedAt: Date,
   status: 'pending' | 'approved' | 'rejected'
 }

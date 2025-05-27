@@ -31,6 +31,17 @@ export default defineEventHandler(async (event) => {
 
     const db = await getDb();
     
+    // Read request body to get phone number
+    const body = await readBody(event);
+    const { phoneNumber } = body || {};
+    
+    if (!phoneNumber || !phoneNumber.trim()) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Phone number is required'
+      });
+    }
+    
     // Check if user is admin first - admins don't need signup requests
     const admins = db.collection('admins');
     const isAdmin = await admins.findOne({ email: userData.email });
@@ -52,7 +63,15 @@ export default defineEventHandler(async (event) => {
     const existingRequest = await signupRequests.findOne({ email: userData.email });
     
     if (existingRequest) {
-      return { message: 'Signup request already pending approval' };
+      if (existingRequest.status === 'pending') {
+        return { message: 'Signup request already pending approval' };
+      } else if (existingRequest.status === 'approved') {
+        // Clean up old approved request and allow new signup
+        await signupRequests.deleteOne({ email: userData.email });
+      } else if (existingRequest.status === 'rejected') {
+        // Clean up old rejected request and allow new signup
+        await signupRequests.deleteOne({ email: userData.email });
+      }
     }
 
     // Insert signup request
@@ -60,6 +79,7 @@ export default defineEventHandler(async (event) => {
       email: userData.email,
       name: userData.name || '',
       picture: userData.picture || '',
+      phoneNumber: phoneNumber.trim(),
       requestedAt: new Date(),
       status: 'pending'
     });

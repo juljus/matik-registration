@@ -112,6 +112,10 @@ export default defineEventHandler(async (event) => {
           });
         }
         
+        // Also clean up any signup requests for this user
+        const signupRequests = db.collection('signupRequests');
+        await signupRequests.deleteOne({ email });
+        
         return { message: 'User removed successfully' };
       }
 
@@ -131,8 +135,9 @@ export default defineEventHandler(async (event) => {
         await users.insertOne({
           email: request.email,
           name: request.name,
+          phone: request.phoneNumber,
           createdAt: new Date(),
-          // RFID, phone will be added when they register their card
+          // RFID will be added when they register their card
         });
         
         // Update request status
