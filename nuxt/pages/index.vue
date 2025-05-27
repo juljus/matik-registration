@@ -1,21 +1,78 @@
 <template>
-  <div class="status-box">
-    <h2>Key Status</h2>
-    <div v-if="!isSignedIn" class="auth-required">
-      <p>🔒 Please sign in to view the key status</p>
-      <p class="auth-hint">You need to be logged in to access this information.</p>
-    </div>
-    <div v-else-if="userStatus && !userStatus.isRegistered" class="signup-required">
-      <p>📝 Account approval needed</p>
-      <p class="auth-hint">Your Google account is signed in, but you need approval to access the key system.</p>
+  <div class="page-container">
+    <!-- Key Status Module -->
+    <div class="module status-module">
+      <div class="module-header">
+        <h2>🔑 Key Status</h2>
+      </div>
       
-      <!-- Always visible phone number input and request button -->
-      <div class="signup-form">
-        <h3>Complete Your Registration</h3>
-        <p class="form-instruction">Please provide your phone number to request access:</p>
+      <div v-if="!isSignedIn" class="auth-required">
+        <div class="message-card">
+          <div class="message-icon">🔒</div>
+          <div class="message-content">
+            <h3>Authentication Required</h3>
+            <p>Please sign in to view the key status and access the system.</p>
+          </div>
+        </div>
+      </div>
+      
+      <div v-else-if="userStatus && !userStatus.isRegistered" class="signup-section">
+        <div class="message-card warning">
+          <div class="message-icon">📝</div>
+          <div class="message-content">
+            <h3>Account Approval Needed</h3>
+            <p>Your Google account is signed in, but you need approval to access the key system.</p>
+          </div>
+        </div>
+      </div>
+      
+      <div v-else-if="pending" class="loading-card">
+        <div class="loading-spinner"></div>
+        <p>Loading key status...</p>
+      </div>
+      
+      <div v-else-if="error" class="error-card">
+        <div class="message-icon">❌</div>
+        <div class="message-content">
+          <h3>Error</h3>
+          <p>{{ error }}</p>
+        </div>
+      </div>
+      
+      <div v-else class="status-display">
+        <div class="status-indicator" :class="statusClass">
+          <div class="status-icon">
+            <span v-if="status === 'taken'">🔴</span>
+            <span v-else>🟢</span>
+          </div>
+          <div class="status-text">
+            <h3>{{ status === 'taken' ? 'Key Taken' : 'Key Available' }}</h3>
+            <p>{{ status === 'taken' ? 'The key is currently in use' : 'The key is available for use' }}</p>
+          </div>
+        </div>
+        
+        <div v-if="holder" class="holder-info">
+          <h4>Current Holder</h4>
+          <div class="holder-details">
+            <p><strong>Name:</strong> {{ holder.name }}</p>
+            <p><strong>Phone:</strong> {{ holder.phone }}</p>
+            <p><strong>Since:</strong> {{ timestamp ? formatDate(timestamp) : 'Unknown' }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Registration Module (only show if user needs to signup) -->
+    <div v-if="isSignedIn && userStatus && !userStatus.isRegistered" class="module registration-module">
+      <div class="module-header">
+        <h2>📋 Complete Registration</h2>
+      </div>
+      
+      <div class="registration-form">
+        <p class="form-instruction">Please provide your phone number to request access to the key system:</p>
         
         <div class="input-group">
-          <label for="phone">Phone Number:</label>
+          <label for="phone">Phone Number</label>
           <input 
             id="phone"
             v-model="phoneNumber" 
@@ -26,36 +83,47 @@
           />
         </div>
         
-        <div class="form-actions">
-          <button 
-            @click="handleSignupRequest" 
-            :disabled="signupPending || !phoneNumber.trim()" 
-            class="signup-btn"
-          >
-            {{ signupPending ? 'Submitting...' : 'Request Access' }}
-          </button>
-        </div>
+        <button 
+          @click="handleSignupRequest" 
+          :disabled="signupPending || !phoneNumber.trim()" 
+          class="request-btn"
+        >
+          <span v-if="signupPending">⏳ Submitting...</span>
+          <span v-else>🚀 Request Access</span>
+        </button>
         
-        <p v-if="signupMessage" class="signup-message" :class="signupMessageClass">{{ signupMessage }}</p>
+        <div v-if="signupMessage" class="message-card" :class="signupMessageClass">
+          <div class="message-content">
+            <p>{{ signupMessage }}</p>
+          </div>
+        </div>
       </div>
     </div>
-    <div v-else-if="pending" class="status-loading">Loading...</div>
-    <div v-else-if="error" class="status-error">{{ error }}</div>
-    <div v-else>
-      <div class="status-indicator" :class="statusClass">
-        <span v-if="status === 'taken'">🔴 Taken</span>
-        <span v-else>🟢 Available</span>
+
+    <!-- Actions Module (only show if user is registered) -->
+    <div v-if="isSignedIn && userStatus && userStatus.isRegistered" class="module actions-module">
+      <div class="module-header">
+        <h2>⚡ Actions</h2>
       </div>
-      <div v-if="holder">
-        <p><strong>Holder:</strong> {{ holder.name }}</p>
-        <p><strong>Phone:</strong> {{ holder.phone }}</p>
-        <p><strong>Role:</strong> {{ holder.role }}</p>
+      
+      <div class="action-buttons">
+        <button @click="takeKey" :disabled="actionPending || status === 'taken'" class="action-btn take-btn">
+          <span v-if="actionPending">⏳</span>
+          <span v-else>🔒</span>
+          Take Key
+        </button>
+        
+        <button @click="returnKey" :disabled="actionPending || status === 'available'" class="action-btn return-btn">
+          <span v-if="actionPending">⏳</span>
+          <span v-else>🔓</span>
+          Return Key
+        </button>
       </div>
-      <div v-else>
-        <p>The key is currently available.</p>
-      </div>
-      <div class="status-timestamp">
-        <small>Last updated: {{ formattedTimestamp }}</small>
+      
+      <div v-if="actionMessage" class="message-card" :class="actionMessageClass">
+        <div class="message-content">
+          <p>{{ actionMessage }}</p>
+        </div>
       </div>
     </div>
   </div>
@@ -64,6 +132,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 
+// State management
 const status = ref<'taken' | 'available'>('available');
 const holder = ref<{ name: string; phone: string; role: string } | null>(null);
 const timestamp = ref<string | null>(null);
@@ -72,9 +141,11 @@ const error = ref<string | null>(null);
 const signupPending = ref(false);
 const signupMessage = ref<string | null>(null);
 const phoneNumber = ref('');
+const actionPending = ref(false);
+const actionMessage = ref<string | null>(null);
 
 // Use the shared auth composable
-const { isSignedIn, user, userStatus, initializeAuth, requestSignup, setAuth } = useAuth();
+const { isSignedIn, user, userStatus, initializeAuth } = useAuth();
 
 // Check if user is authenticated on page load
 onMounted(async () => {
@@ -99,12 +170,28 @@ watch([isSignedIn, userStatus], ([newSignedIn, newUserStatus]) => {
   }
 });
 
-// Watch for phoneNumber changes
-watch(phoneNumber, (newValue) => {
-  // Phone number changed
+// Computed properties
+const statusClass = computed(() => 
+  status.value === 'taken' ? 'taken' : 'available'
+);
+
+const signupMessageClass = computed(() => {
+  if (!signupMessage.value) return '';
+  return signupMessage.value.includes('success') || signupMessage.value.includes('submitted') ? 'success' : 'error';
 });
 
-const handleSignupRequest = async () => {
+const actionMessageClass = computed(() => {
+  if (!actionMessage.value) return '';
+  return actionMessage.value.includes('success') || actionMessage.value.includes('Success') ? 'success' : 'error';
+});
+
+// Helper functions
+function formatDate(dateString: string) {
+  return new Date(dateString).toLocaleString();
+}
+
+// Authentication functions
+async function handleSignupRequest() {
   if (!phoneNumber.value.trim()) {
     signupMessage.value = 'Please enter a valid phone number.';
     return;
@@ -141,22 +228,78 @@ const handleSignupRequest = async () => {
   } finally {
     signupPending.value = false;
   }
-};
+}
 
-const signupMessageClass = computed(() => {
-  if (!signupMessage.value) return '';
-  return signupMessage.value.includes('success') || signupMessage.value.includes('submitted') ? 'success' : 'error';
-});
+// Key management functions
+async function takeKey() {
+  actionPending.value = true;
+  actionMessage.value = null;
+  
+  try {
+    const savedUser = localStorage.getItem('matik-user');
+    if (!savedUser) {
+      throw new Error('No authentication token available');
+    }
+    
+    const response = await fetch('/api/take-key', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${btoa(savedUser)}`
+      }
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok) {
+      actionMessage.value = 'Key taken successfully!';
+      await fetchStatus(); // Refresh status
+    } else {
+      actionMessage.value = result.error || 'Failed to take key';
+    }
+  } catch (error) {
+    console.error('Take key error:', error);
+    actionMessage.value = 'Failed to take key. Please try again.';
+  } finally {
+    actionPending.value = false;
+  }
+}
 
-const statusClass = computed(() =>
-  status.value === 'taken' ? 'taken' : 'available'
-);
+async function returnKey() {
+  actionPending.value = true;
+  actionMessage.value = null;
+  
+  try {
+    const savedUser = localStorage.getItem('matik-user');
+    if (!savedUser) {
+      throw new Error('No authentication token available');
+    }
+    
+    const response = await fetch('/api/return-key', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${btoa(savedUser)}`
+      }
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok) {
+      actionMessage.value = 'Key returned successfully!';
+      await fetchStatus(); // Refresh status
+    } else {
+      actionMessage.value = result.error || 'Failed to return key';
+    }
+  } catch (error) {
+    console.error('Return key error:', error);
+    actionMessage.value = 'Failed to return key. Please try again.';
+  } finally {
+    actionPending.value = false;
+  }
+}
 
-const formattedTimestamp = computed(() => {
-  if (!timestamp.value) return '';
-  return new Date(timestamp.value).toLocaleString();
-});
-
+// Status fetching
 async function fetchStatus() {
   pending.value = true;
   error.value = null;
@@ -191,94 +334,202 @@ async function fetchStatus() {
 </script>
 
 <style scoped>
-.status-box {
+/* Page Container */
+.page-container {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 1.2rem;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  min-height: 100vh;
+  background: #0f1114;
 }
-.status-box h2 {
-  margin-bottom: 0.5rem;
+
+/* Module Base Styles */
+.module {
+  background: #1a1d23;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+  border: 1px solid #2a2d36;
+}
+
+.module-header {
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #2a2d36;
+  padding-bottom: 1rem;
+}
+
+.module-header h2 {
+  margin: 0;
   font-size: 1.5rem;
   font-weight: 600;
-  letter-spacing: 1px;
-}
-.status-indicator {
-  font-size: 1.2rem;
-  font-weight: 500;
-  padding: 0.5rem 1.2rem;
-  border-radius: 0.7rem;
-  margin-bottom: 0.5rem;
-  display: inline-block;
-}
-.status-indicator.taken {
-  background: #3a2323;
-  color: #ff6b6b;
-}
-.status-indicator.available {
-  background: #233a2a;
-  color: #6bffb1;
-}
-.status-loading {
-  color: #aaa;
-}
-.status-error {
-  color: #ff6b6b;
-}
-.status-timestamp {
-  margin-top: 0.5rem;
-  color: #888;
-}
-.auth-required {
-  text-align: center;
-  color: #aaa;
-}
-.auth-hint {
-  font-size: 0.9rem;
-  color: #666;
-  margin-top: 0.5rem;
-}
-.signup-required {
-  text-align: center;
-  color: #aaa;
-}
-.signup-message {
-  margin-top: 1rem;
-  font-size: 0.9rem;
-  color: #6bffb1;
-}
-
-.signup-message.success {
-  color: #6bffb1;
-}
-
-.signup-message.error {
-  color: #ff6b6b;
-}
-
-.signup-form {
-  text-align: left;
-  background: #2a2d36;
-  border: 1px solid #444;
-  border-radius: 0.8rem;
-  padding: 1.5rem;
-  margin-top: 1rem;
+  color: #f1f1f1;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Message Cards */
+.message-card {
+  background: #2a2d36;
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  border: 1px solid #3a3d46;
+}
+
+.message-card.warning {
+  background: #3a2a1a;
+  border-color: #4a3a2a;
+}
+
+.message-card.success {
+  background: #1a3a2a;
+  border-color: #2a4a3a;
+}
+
+.message-card.error {
+  background: #3a1a1a;
+  border-color: #4a2a2a;
+}
+
+.message-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.message-content {
+  flex: 1;
+}
+
+.message-content h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #f1f1f1;
+}
+
+.message-content p {
+  margin: 0;
+  color: #ccc;
+  line-height: 1.5;
+}
+
+/* Loading Card */
+.loading-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: #2a2d36;
+  border-radius: 0.75rem;
+  border: 1px solid #3a3d46;
+}
+
+.loading-spinner {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid #3a3d46;
+  border-top: 2px solid #6bffb1;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error Card */
+.error-card {
+  background: #3a1a1a;
+  border: 1px solid #4a2a2a;
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  display: flex;
+  align-items: flex-start;
   gap: 1rem;
 }
 
-.signup-form h3 {
-  margin: 0 0 0.5rem 0;
+/* Status Display */
+.status-display {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid #3a3d46;
+}
+
+.status-indicator.taken {
+  background: #3a2323;
+  border-color: #4a3333;
+}
+
+.status-indicator.available {
+  background: #233a2a;
+  border-color: #334a3a;
+}
+
+.status-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.status-text h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.2rem;
+  font-weight: 600;
   color: #f1f1f1;
-  text-align: center;
+}
+
+.status-text p {
+  margin: 0;
+  color: #ccc;
+}
+
+/* Holder Info */
+.holder-info {
+  background: #2a2d36;
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  border: 1px solid #3a3d46;
+}
+
+.holder-info h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #f1f1f1;
+}
+
+.holder-details p {
+  margin: 0 0 0.5rem 0;
+  color: #ccc;
+}
+
+.holder-details p:last-child {
+  margin-bottom: 0;
+}
+
+/* Registration Form */
+.registration-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
 .form-instruction {
   color: #ccc;
-  font-size: 0.9rem;
-  margin-bottom: 1rem;
   text-align: center;
+  margin: 0;
 }
 
 .input-group {
@@ -294,8 +545,8 @@ async function fetchStatus() {
 }
 
 .phone-input {
-  background: #181a20;
-  border: 1px solid #444;
+  background: #2a2d36;
+  border: 1px solid #3a3d46;
   border-radius: 0.5rem;
   padding: 0.75rem;
   color: #f1f1f1;
@@ -313,30 +564,96 @@ async function fetchStatus() {
   cursor: not-allowed;
 }
 
-.form-actions {
-  display: flex;
-  gap: 0.8rem;
-  justify-content: center;
-}
-
-.signup-btn {
+.request-btn {
   background: #6bffb1;
   color: #181a20;
   border: none;
   border-radius: 0.5rem;
-  padding: 0.6rem 1.2rem;
-  font-size: 0.9rem;
-  font-weight: 500;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
+  align-self: center;
 }
 
-.signup-btn:hover:not(:disabled) {
+.request-btn:hover:not(:disabled) {
   background: #5ae89d;
+  transform: translateY(-1px);
 }
 
-.signup-btn:disabled {
+.request-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  background: #2a2d36;
+  color: #f1f1f1;
+  border: 1px solid #3a3d46;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.action-btn:hover:not(:disabled) {
+  background: #3a3d46;
+  transform: translateY(-1px);
+}
+
+.action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.take-btn:hover:not(:disabled) {
+  background: #3a2323;
+  border-color: #4a3333;
+  color: #ff6b6b;
+}
+
+.return-btn:hover:not(:disabled) {
+  background: #233a2a;
+  border-color: #334a3a;
+  color: #6bffb1;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .page-container {
+    padding: 1rem;
+    gap: 1rem;
+  }
+  
+  .module {
+    padding: 1rem;
+  }
+  
+  .module-header h2 {
+    font-size: 1.3rem;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+  }
+  
+  .action-btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 </style>
