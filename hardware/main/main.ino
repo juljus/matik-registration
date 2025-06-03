@@ -1,25 +1,35 @@
+#include <_secrets.h>
 #include <_servo.h>
-#include <_rfid.h>
-
-int led_pin = 20;
+#include <_rfidReader.h>
+#include <_rfidSender.h>
+#include <_wifiConnection.h>
 
 void setup() {
     // init the serial communication
     Serial.begin(115200);
     Serial.println("Setup started");
 
-    // Initialize the LED pin as an output
-    pinMode(led_pin, OUTPUT);
+    // header init
+    wifiConnectionInit();
+    servoInit();
+    rfidReaderInit();
+    rfidSenderInit();
 
     Serial.println("Setup completed");
 }
 
 void loop() {
-    Serial.println("Loop started");
 
     // RFID
-    checkRFID();
+    char rfidUID[17];
+    if (checkRFID(rfidUID, sizeof(rfidUID))) {
+        Serial.print("RFID UID: ");
+        Serial.println(rfidUID);
 
-    // SERVO
-    spinServo();
+        Serial.println("Processing RFID card...");
+        processRFIDCard(rfidUID);
+    }
+
+    // // SERVO
+    // spinServo();
 }

@@ -1,1 +1,5 @@
+# WIFI credentials
+hardware/main/_secrets.h
+
+# MISC
 .DS_Store

@@ -5,18 +5,23 @@ Servo myservo;
 
 unsigned long lastTime;
 bool servoState = 0;
-bool firstBoot = 1;
+// bool firstBoot = 1;
+
+void servoInit()
+{
+    myservo.attach(servo_pin); // Attach the servo to the pin
+    myservo.write(90); // Set initial position to neutral for continuous servo
+    Serial.println("Servo initialized");
+}
 
 void spinServo()
 {
-    Serial.println("func started");
-
-    if (firstBoot) {
-        firstBoot = 0;
-        myservo.attach(servo_pin); // Attach the servo to the pin
-        myservo.write(90); // Set initial position to neutral for continuous servo
-        Serial.println("Servo initialized");
-    }
+    // if (firstBoot) {
+    //     firstBoot = 0;
+        // myservo.attach(servo_pin); // Attach the servo to the pin
+        // myservo.write(90); // Set initial position to neutral for continuous servo
+        // Serial.println("Servo initialized");
+    // }
 
     if (millis() - lastTime > 1000) {
         lastTime = millis();
