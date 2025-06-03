@@ -2,14 +2,38 @@ import { getDb } from '../utils/mongo';
 
 export default defineEventHandler(async (event) => {
   if (event.method !== 'POST') {
-    return { error: 'Method not allowed' };
+    throw createError({
+      statusCode: 405,
+      statusMessage: 'Method not allowed'
+    });
+  }
+
+  // Device authentication
+  const apiKey = getHeader(event, 'x-api-key');
+  const deviceId = getHeader(event, 'x-device-id');
+  
+  if (!apiKey || apiKey !== process.env.DEVICE_API_KEY) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Invalid device API key'
+    });
+  }
+  
+  if (!deviceId || deviceId !== 'esp32-matik-registration') {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'Unknown device'
+    });
   }
 
   const body = await readBody(event);
   const { rfid, eventType, adminOverride } = body || {};
 
   if (!rfid || !eventType || !['take', 'return'].includes(eventType)) {
-    return { error: 'Missing or invalid fields' };
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Missing or invalid fields'
+    });
   }
 
   try {
@@ -26,7 +50,10 @@ export default defineEventHandler(async (event) => {
       const userWithRfid = await users.findOne({ rfid: rfid });
       
       if (!userWithRfid) {
-        return { error: 'Invalid RFID - no user found with this RFID tag' };
+        throw createError({
+          statusCode: 400,
+          statusMessage: 'Invalid RFID - no user found with this RFID tag'
+        });
       }
     }
 
@@ -39,25 +66,45 @@ export default defineEventHandler(async (event) => {
       if (latestEvent.length > 0 && latestEvent[0].eventType === 'take') {
         const currentHolder = await users.findOne({ rfid: latestEvent[0].rfid });
         const holderName = currentHolder ? currentHolder.name : 'Unknown user (orphaned RFID)';
-        return { error: `Key is already taken by ${holderName}` };
+        throw createError({
+          statusCode: 409,
+          statusMessage: `Key is already taken by ${holderName}`
+        });
       }
     } else if (eventType === 'return' && !isAdminOverride) {
       // Check if key is available (cannot return if not taken)
       if (!latestEvent.length || latestEvent[0].eventType === 'return') {
-        return { error: 'Key is not currently taken' };
+        throw createError({
+          statusCode: 409,
+          statusMessage: 'Key is not currently taken'
+        });
       }
       
       // Check if the person returning is the same who took it
       if (latestEvent[0].rfid !== rfid) {
         const currentHolder = await users.findOne({ rfid: latestEvent[0].rfid });
         const holderName = currentHolder ? currentHolder.name : 'Unknown user (orphaned RFID)';
-        return { error: `Key was taken by ${holderName}. Only they can return it.` };
+        throw createError({
+          statusCode: 409,
+          statusMessage: `Key was taken by ${holderName}. Only they can return it.`
+        });
       }
     }
 
-    const result = await keyEvents.insertOne({ rfid, eventType, timestamp: new Date() });
+    const result = await keyEvents.insertOne({ 
+      rfid, 
+      eventType, 
+      timestamp: new Date(),
+      deviceId 
+    });
     return { success: true, eventId: result.insertedId };
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : error };
+  } catch (error: any) {
+    if (error.statusCode) {
+      throw error; // Re-throw HTTP errors
+    }
+    throw createError({
+      statusCode: 500,
+      statusMessage: error instanceof Error ? error.message : 'Internal server error'
+    });
   }
 });
