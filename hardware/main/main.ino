@@ -1,15 +1,25 @@
+#include <_servo.h>
+#include <_rfid.h>
+
 int led_pin = 20;
 
 void setup() {
-  // Initialize the LED pin as an output
-  pinMode(led_pin, OUTPUT);
-}
-void loop() {
-  // Turn the LED on
-  digitalWrite(led_pin, HIGH);
-  delay(1000); // Wait for a second
+    // init the serial communication
+    Serial.begin(115200);
+    Serial.println("Setup started");
 
-  // Turn the LED off
-  digitalWrite(led_pin, LOW);
-  delay(1000); // Wait for a second
+    // Initialize the LED pin as an output
+    pinMode(led_pin, OUTPUT);
+
+    Serial.println("Setup completed");
+}
+
+void loop() {
+    Serial.println("Loop started");
+
+    // RFID
+    checkRFID();
+
+    // SERVO
+    spinServo();
 }
