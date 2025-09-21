@@ -11,7 +11,7 @@ void setup() {
 
     // header init
     wifiConnectionInit();
-    servoInit();
+    // servoInit(); // Disabled for now... when we make a cooler box we can uncomment
     rfidReaderInit();
     rfidSenderInit();
 
@@ -29,7 +29,4 @@ void loop() {
         Serial.println("Processing RFID card...");
         processRFIDCard(rfidUID);
     }
-
-    // // SERVO
-    // spinServo();
 }
