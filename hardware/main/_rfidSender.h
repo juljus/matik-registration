@@ -35,6 +35,11 @@ bool checkKeyStatus()
     Serial.println(url);
     
     http.begin(url);
+    // DEBUG: log the device headers we will send
+    Serial.print("DEBUG header X-Device-ID: ");
+    Serial.println(DEVICE_ID);
+    Serial.print("DEBUG header X-API-Key: ");
+    Serial.println(DEVICE_API_KEY);
     http.addHeader("X-Device-ID", DEVICE_ID);
     http.addHeader("X-API-Key", DEVICE_API_KEY);
     

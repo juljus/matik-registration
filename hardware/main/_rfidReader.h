@@ -1,11 +1,11 @@
 #include <SPI.h>
 #include <MFRC522.h>
 
-#define MOSI_PIN 23
-#define MISO_PIN 21
-#define SS_PIN 5
-#define SCK_PIN 18
-#define RST_PIN 22
+#define MOSI_PIN 21
+#define MISO_PIN 20
+#define SS_PIN 23
+#define SCK_PIN 22
+#define RST_PIN 18
 
 MFRC522 rfid(SS_PIN, RST_PIN);
 
@@ -14,7 +14,6 @@ void rfidReaderInit()
     SPI.begin(SCK_PIN, MISO_PIN, MOSI_PIN, SS_PIN);
     rfid.PCD_Init();
     Serial.println("RFID initialized");
-
 }
 
 bool checkRFID(char* uidBuffer, size_t bufferSize)
