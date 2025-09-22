@@ -3,6 +3,7 @@
 #include <_rfidReader.h>
 #include <_rfidSender.h>
 #include <_wifiConnection.h>
+#include <_led.h>
 
 void setup() {
     // init the serial communication
@@ -14,6 +15,7 @@ void setup() {
     // servoInit(); // Disabled for now... when we make a cooler box we can uncomment
     rfidReaderInit();
     rfidSenderInit();
+    initLed();
 
     Serial.println("Setup completed");
 }
@@ -29,4 +31,6 @@ void loop() {
         Serial.println("Processing RFID card...");
         processRFIDCard(rfidUID);
     }
+
+    setLed(!keyIsTaken);
 }
