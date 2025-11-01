@@ -157,12 +157,6 @@ A comprehensive system for managing the rental and return of a single physical k
 3. Review pending signup requests
 4. Approve or reject users as needed
 
-## Future Improvements
-- **ESP32 Integration:** Physical RFID reader implementation
-- **SMS Notifications:** Alert when key is taken/overdue
-- **Activity Logs:** Detailed audit trail of all system actions
-- **Reservation System:** Allow users to reserve key in advance
-
 ## Notes
 - **Admin Access:** Users in the `admins` collection automatically have full access
 - **Security:** All API endpoints require authentication via Bearer tokens
